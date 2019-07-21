@@ -1,0 +1,55 @@
+pro cucumber rodar no container instalar chromedriver no agente, montar o
+ecosistema no gitlab
+
+--------ALPINE.SH-----
+RUN echo "http://dl-4.alpinelinux.org/alpine/v3.9/main" >> /etc/apk/repositories && \
+echo "http://dl-4.alpinelinux.org/alpine/v3.9/community" >> /etc/apk/repositories
+
+apk update && \
+  apk add build-base \
+  libxml2-dev \
+  libxslt-dev \
+  curl unzip libexif udev chromium chromium-chromedriver wait4ports xvfb xorg-server dbus ttf-freefont mesa-dri-swrast \
+  && rm -rf /var/cache/apk/*
+========================================================================================================================
+# RUN apk update && \
+#   apk add curl unzip libexif udev chromium chromium-chromedriver xvfb
+RUN apk add --update \
+  build-base \
+  libxml2-dev \
+  libxslt-dev \
+  postgresql-dev \
+  curl unzip libexif udev chromium chromium-chromedriver xvfb xorg-server dbus ttf-freefont mesa-dri-swrast \
+  && rm -rf /var/cache/apk/*
+=======================================================================================================================
+--------------
+.gitlab-ci.yml
+before_script:
+  - chmod +x alpine.sh
+  - ./alpine.sh
+  - gem install bundler --no-document
+image: ruby:alpine
+
+test:
+ stage: test
+ script:
+  - bundle install
+  - bundle exec cucumber
+artifacts:
+  when: always
+  paths:
+   - log/report.html
+
+========================================================================
+OBS.: COLOCAR SCRIPT NO ENV PARA IMPLEMENTAR O CHROME HEADLESS O CHROMIUM:
+
+Capybara.register_driver :selenium_chrome_headless do |app|
+  Capybara::Selenium::Driver.load_selenium
+  browser_options = ::Selenium::WebDriver::Chrome::Options.new.tap do |opts|
+    opts.args << '--headless'
+    opts.args << '--disable-gpu' if Gem.win_platform?
+    opts.args << "--no-sandbox" #argumento a mais para rodar no container
+    opts.args << '--disable-site-isolation-trials'
+  end
+  Capybara::Selenium::Driver.new(app, browser: :chrome, options: browser_options)
+end
